@@ -5,6 +5,8 @@ from PyQt5.QtWebEngineWidgets import *
 from PyQt5.QtPrintSupport import *
 import os
 import sys
+import json
+from datetime import datetime
 
 class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
@@ -56,13 +58,14 @@ class MainWindow(QMainWindow):
         history_btn.triggered.connect(self.show_history)
         navtb.addAction(history_btn)
 
+        self.load_history()
         self.add_new_tab(QUrl('https://www.google.com'), 'Homepage')
         self.show()
         self.setWindowTitle("Lawrence Connected")
 
-        # History
-        self.history = []
-        self.history_index = -1
+        # Connect close event to save history
+        self.setAttribute(Qt.WA_DeleteOnClose)
+        self.destroyed.connect(self.save_history)
 
     def add_new_tab(self, qurl=None, label="Blank"):
         if qurl is None:
@@ -113,8 +116,10 @@ class MainWindow(QMainWindow):
         if self.history_index != -1:
             # Clear forward history if a new page is loaded
             self.history = self.history[:self.history_index + 1]
-        if not self.history or self.history[-1] != url_str:
-            self.history.append(url_str)
+        if not self.history or self.history[-1]['url'] != url_str:
+            title = self.tabs.currentWidget().page().title()
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            self.history.append({'url': url_str, 'title': title, 'time': timestamp})
             self.history_index += 1
 
     def update_url(self, q, browser=None):
@@ -142,7 +147,7 @@ class MainWindow(QMainWindow):
     def update_history_index(self, step):
         self.history_index += step
         if 0 <= self.history_index < len(self.history):
-            self.tabs.currentWidget().setUrl(QUrl(self.history[self.history_index]))
+            self.tabs.currentWidget().setUrl(QUrl(self.history[self.history_index]['url']))
 
     def show_history(self):
         history_dialog = QDialog(self)
@@ -150,7 +155,12 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout()
 
         history_list = QListWidget()
-        history_list.addItems(self.history)
+        for item in self.history:
+            timestamp = item['time']
+            title = item['title']
+            url = item['url']
+            display_text = f"{timestamp} - {title} ({url})"
+            history_list.addItem(display_text)
         history_list.itemClicked.connect(self.history_item_clicked)
         layout.addWidget(history_list)
 
@@ -158,9 +168,24 @@ class MainWindow(QMainWindow):
         history_dialog.exec_()
 
     def history_item_clicked(self, item):
-        url = item.text()
+        display_text = item.text()
+        url = display_text.split('(', 1)[1].rstrip(')')
         self.tabs.currentWidget().setUrl(QUrl(url))
-        self.history_index = self.history.index(url)
+        self.history_index = next(i for i, h in enumerate(self.history) if h['url'] == url)
+
+    def load_history(self):
+        history_file = 'history.json'
+        if os.path.exists(history_file):
+            with open(history_file, 'r') as f:
+                self.history = json.load(f)
+        else:
+            self.history = []
+        self.history_index = -1
+
+    def save_history(self):
+        history_file = 'history.json'
+        with open(history_file, 'w') as f:
+            json.dump(self.history, f, indent=4)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
