@@ -97,7 +97,12 @@ class MainWindow(QMainWindow):
     def navigate_to_url(self):
         text = self.urlbar.text()
         if not text.startswith(('http://', 'https://')):
+            
             # Assume it's a search query
+            query = text.replace(' ', '+')
+            url = f"https://www.google.com/search?q={query}"
+            
+        elif not text.endswith(('.com', '.net', '.org', '.gov', '.co', '.uk', '.edu')):
             query = text.replace(' ', '+')
             url = f"https://www.google.com/search?q={query}"
         else:
