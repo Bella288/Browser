@@ -28,7 +28,7 @@ class MainWindow(QMainWindow):
 		
 		next_btn = QAction("Forward", self)
 		next_btn.setStatusTip("Forward to next Page")
-    next_btn.triggered.connect(lambda:self.tabs.currentWidget().forward())
+    		next_btn.triggered.connect(lambda:self.tabs.currentWidget().forward())
 		navtb.addAction(next_btn)
 
 		reload_btn = QAction("Reload", self)
